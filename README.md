@@ -1,4 +1,4 @@
-🌟 image-centralizer 🌟
+# 🌟 image-centralizer 🌟
 
 ## 📸 Project Overview
 
