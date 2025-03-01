@@ -20,7 +20,7 @@ def auto_crop_and_draw_border(image_path, background_color=(255, 255, 255), bord
             if not is_background_pixel(img.getpixel((x, y)), background_color, tolerance):
                 row_is_background = False
                 print(f"Found top non-background pixel at ({x}, {y}), color is: {img.getpixel((x, y))}")
-                top_pos = (x+1, y)
+                top_pos = (x, y-1)
                 break
         if not row_is_background:
             top = y
@@ -33,7 +33,7 @@ def auto_crop_and_draw_border(image_path, background_color=(255, 255, 255), bord
             if not is_background_pixel(img.getpixel((x, y)), background_color, tolerance):
                 row_is_background = False
                 print(f"Found bottom non-background pixel at ({x}, {y}), color is: {img.getpixel((x, y))}")
-                bottom_pos = (x+1, y)
+                bottom_pos = (x, y+1)
                 break
         if not row_is_background:
             bottom = y
@@ -46,7 +46,7 @@ def auto_crop_and_draw_border(image_path, background_color=(255, 255, 255), bord
             if not is_background_pixel(img.getpixel((x, y)), background_color, tolerance):
                 col_is_background = False
                 print(f"Found left non-background pixel at ({x}, {y}), color is: {img.getpixel((x, y))}")
-                left_pos = (x+1, y)
+                left_pos = (x-1, y)
                 break
         if not col_is_background:
             left = x
@@ -71,21 +71,50 @@ def auto_crop_and_draw_border(image_path, background_color=(255, 255, 255), bord
     # Draw border (after cropping)
     cropped_width, cropped_height = cropped_img.size
     draw = ImageDraw.Draw(lined_image)
-    def draw_border(draw, width, height, top, bottom, left, right, border_color):
+    def draw_border_offset(draw, width, height, top, bottom, left, right, color, width_offset = 0, height_offset = 0):
             # Horizontal lines
-            draw.line([(0, top), (width, top)], fill=border_color, width=1)  # Top
-            draw.line([(0, bottom), (width, bottom)], fill=border_color, width=1)  # Bottom
+            draw.line([(0, top - height_offset), (width, top - height_offset)], fill=color, width=1)  # Top
+            draw.line([(0, bottom + height_offset), (width, bottom + height_offset)], fill=color, width=1)  # Bottom
             # Vertical lines
-            draw.line([(left, 0), (left, height)], fill=border_color, width=1)  # Left
-            draw.line([(right, 0), (right, height)], fill=border_color, width=1)  # Right
+            draw.line([(left - width_offset, 0), (left - width_offset, height)], fill=color, width=1)  # Left
+            draw.line([(right + width_offset, 0), (right + width_offset, height)], fill=color, width=1)  # Right
 
+    def draw_border(draw, width, height, top, bottom, left, right, border_color):
+        # Horizontal lines
+        draw.line([(0, top), (width, top)], fill=border_color, width=1)  # Top
+        draw.line([(0, bottom), (width, bottom)], fill=border_color, width=1)  # Bottom
+        # Vertical lines
+        draw.line([(left, 0), (left, height)], fill=border_color, width=1)  # Left
+        draw.line([(right, 0), (right, height)], fill=border_color, width=1)  # Right
 
-    draw_border(draw, width, height, top, bottom, left, right, border_color)
+    centered_width = right - left
+    centered_height = bottom - top
+    print(f"Centered width: {centered_width}, centered height: {centered_height}")
+    general_offset = 20
+    if centered_width > centered_height:
+        width_offset = general_offset
+        height_offset = general_offset + (centered_width - centered_height) / 2
+    else:
+        width_offset = general_offset + (centered_height - centered_width) / 2
+        height_offset = general_offset
+
+    centered_top = top-height_offset
+    centered_bottom = bottom+height_offset
+    centered_left = left-width_offset
+    centered_right = right+width_offset
+    print(f"Centered top: {centered_top}, centered bottom: {centered_bottom}, centered left: {centered_left}, centered right: {centered_right}")
+    print(f"centered_width: {centered_right-centered_left}, centered_height: {centered_bottom-centered_top}")
+
+    draw_border(draw, width, height, top, bottom, left, right, (0,0,255))
+    draw_border(draw, width, height, centered_top, centered_bottom, centered_left, centered_right, border_color)
     draw.point(top_pos, fill=(0, 0, 0))
     draw.point(bottom_pos, fill=(0, 0, 0))
     draw.point(right_pos, fill=(0, 0, 0))
     draw.point(left_pos, fill=(0, 0, 0))
-    lined_image.save("lined_image.png")
+    cropped_img_centered = img.crop((centered_left, centered_top, centered_right, centered_bottom))
+
+    lined_image.save(f"{image_path}_lined_image.png")
+    cropped_img_centered.save(f"{image_path}_cropped_img_centered.png")
     return cropped_img
 
 
@@ -98,7 +127,7 @@ def main():
 
     try:
         cropped_with_border = auto_crop_and_draw_border(image_path)
-        output_path = "cropped_with_border.png"  # Or make this a command-line argument too
+        output_path = f"{image_path}_cropped_with_border.png"  # Or make this a command-line argument too
         cropped_with_border.save(output_path)
         print(f"Cropped image saved to {output_path}")
 
